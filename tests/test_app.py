@@ -5,6 +5,5 @@
 from src.app import dodaj
 
 
-def test_dodaj():
-    # Test "dummy" 
-    assert dodaj(2, 3) == 5
+def test_dodaj(): 
+    assert dodaj(2, 3) == 6 # zły wynik, test powinien się wyłożyć
