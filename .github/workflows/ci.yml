@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches: [ "main" ]
+    paths-ignore:
+      - 'docs/**'
+
+# Anulowanie starych workflowów przy nowym pushu do tej samej gałęzi
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+
+    # Macierz – testujemy na dwóch wersjach Pythona
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    env:
+      # Sekret z URL webhooka – dodamy go później w ustawieniach repo
+      WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+
+    steps:
+      # 1. Checkout kodu
+      - name: Checkout repozytorium
+        uses: actions/checkout@v4
+
+      # 2. Ustawienie wersji Pythona z macierzy
+      - name: Ustawienie Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # 3. Cache dla zależności (pip)
+      - name: Cache dla pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+      # 4. Instalacja zależności
+      - name: Instalacja zależności
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # 5. Testy automatyczne
+      - name: Uruchom testy
+        run: |
+          pytest
+
+      # 6. "Build" aplikacji – tutaj po prostu kopiujemy kod do katalogu build
+      - name: Build aplikacji
+        run: |
+          mkdir -p build
+          cp -r src build/
+
+      # 7. Zapis artefaktów builda
+      - name: Zapisz artefakt builda
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-build-${{ matrix.python-version }}
+          path: build
+
+      # 8. Wysyłanie powiadomienia przy NIEudanym buildzie/testach
+      # always() -> krok wykona się nawet gdy poprzedni krok się nie powiedzie
+      # failure() -> warunek, że w jobie wystąpił błąd
+      - name: Wyślij powiadomienie o błędzie
+        if: ${{ failure() && always() }}
+        run: |
+          echo "Wysyłanie powiadomienia o nieudanym buildzie..."
+          curl -X POST -H 'Content-Type: application/json' \
+            --data "{\"text\": \"❌ CI build nie powiódł się dla repozytorium ${GITHUB_REPOSITORY} na gałęzi ${GITHUB_REF}.\"}" \
+            "$WEBHOOK_URL"
