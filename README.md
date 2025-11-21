@@ -15,3 +15,4 @@ To repozytorium przedstawia prosty projekt w Pythonie używany do demonstracji *
 
 ## Powiadomienia Discord – przykład działania
 
+<img width="1396" height="549" alt="image" src="https://github.com/user-attachments/assets/3b8f370c-d5b3-46aa-ae92-dd4cc448cff8" />
