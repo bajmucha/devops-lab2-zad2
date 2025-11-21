@@ -6,4 +6,4 @@ from src.app import dodaj
 
 
 def test_dodaj(): 
-    assert dodaj(2, 3) == 6 # zły wynik, test powinien się wyłożyć
+    assert dodaj(2, 3) == 5 
